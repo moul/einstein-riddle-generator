@@ -10,8 +10,11 @@ import (
 )
 
 type Inventory struct {
+	Size       int
+	Categories int
+
 	Items map[int]ItemList
-	Size  int
+	Kinds []int
 }
 
 type ItemList []string
@@ -24,11 +27,17 @@ const (
 	KindPet
 	KindJob
 	KindBeverage
+	KindWeapon
+	KindTransport
+	KindRoom
 )
 
 var KindName map[int]string
 
-var Kinds = []int{KindNationality, KindHouseColor, KindPet, KindJob, KindBeverage}
+var Kinds = []int{
+	KindNationality, KindHouseColor, KindPet, KindJob,
+	KindBeverage, KindWeapon, KindTransport, KindRoom,
+}
 
 func (il *ItemList) Shuffle() {
 	for i := range *il {
@@ -44,6 +53,9 @@ func init() {
 		KindPet:         "pet",
 		KindJob:         "job",
 		KindBeverage:    "beverage",
+		KindWeapon:      "weapon",
+		KindTransport:   "transport",
+		KindRoom:        "room",
 	}
 	BaseInventory = map[int]ItemList{
 		KindNationality: {
@@ -54,6 +66,7 @@ func init() {
 			"portuguese",
 			"spannish",
 			"german",
+			"scottish",
 		},
 		KindHouseColor: {
 			"red",
@@ -95,17 +108,61 @@ func init() {
 			"coca-cola",
 			"dr-pepper",
 			"blue-lagoon",
+			"fanta",
+		},
+		KindWeapon: {
+			"sword",
+			"gun",
+			"bazooka",
+			"grenade",
+			"bomb",
+			"assault-rifle",
+			"shotgun",
+			"knife",
+			"lasergun",
+		},
+		KindTransport: {
+			"bus",
+			"train",
+			"car",
+			"bike",
+			"plane",
+			"roller",
+			"motorbike",
+			"hoverboard",
+		},
+		KindRoom: {
+			"kitchen",
+			"bedroom",
+			"lobby",
+			"living-room",
+			"veranda",
+			"garden",
+			"pool",
+			"restroom",
+			"bathroom",
 		},
 	}
 }
 
-func NewInventory(size int) *Inventory {
+func NewInventory(size, categories int) *Inventory {
 	inventory := Inventory{
-		Size:  size,
-		Items: make(map[int]ItemList, 0),
+		Size:       size,
+		Categories: categories,
+		Items:      make(map[int]ItemList, 0),
+		Kinds:      make([]int, categories),
 	}
 
-	for _, kind := range Kinds {
+	for i := range Kinds {
+		j := rand.Intn(i + 1)
+		Kinds[i], Kinds[j] = Kinds[j], Kinds[i]
+	}
+
+	for i := 0; i < categories; i++ {
+		inventory.Kinds[i] = Kinds[i]
+	}
+
+	for _, kind := range inventory.Kinds {
 		itemList := BaseInventory[kind]
 		itemList.Shuffle()
 		inventory.Items[kind] = ItemList{}
@@ -125,13 +182,13 @@ func (i *Inventory) Show() {
 		header += fmt.Sprintf("\t%d", j+1)
 	}
 	fmt.Fprintf(w, "%s\n", header)
-	for _, kind := range Kinds {
+	for _, kind := range i.Kinds {
 		fmt.Fprintf(w, "%s\t%s\n", KindName[kind], strings.Join(i.Items[kind], "\t"))
 	}
 }
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
-	inventory := NewInventory(5)
+	inventory := NewInventory(8, 8)
 	inventory.Show()
 }
