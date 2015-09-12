@@ -7,6 +7,8 @@ import (
 	"strings"
 	"text/tabwriter"
 	"time"
+
+	"github.com/docker/machine/log"
 )
 
 type Inventory struct {
@@ -213,7 +215,7 @@ func (i *Inventory) Length() int {
 }
 
 func (i *Inventory) EOF() bool {
-	return (len(i.Pickeds)+1)*i.GroupSize >= i.Length()
+	return len(i.Missings()) <= 2
 }
 
 func (i *Inventory) PickSamePersonGroup(maxLevel int) []int {
@@ -415,9 +417,15 @@ func main() {
 		inventory.PickSamePersonGroup(0)
 	}
 
+	secretQuantity := 2
+
 	// pick at least each item one time
-	for !inventory.EOF() {
+	for len(inventory.Missings()) > secretQuantity+1 {
 		inventory.PickAvailableGroup(1)
+	}
+
+	for len(inventory.Missings()) > secretQuantity {
+		inventory.PickItemAtExtremity(0)
 	}
 
 	// pick again some items
@@ -431,6 +439,15 @@ func main() {
 	}
 
 	inventory.Show()
+
+	missingsKind := make(map[int]bool, 0)
+	for _, missing := range inventory.Missings() {
+		if missingsKind[missing.Kind] {
+			log.Errorf("Invalid riddle: multiple missings item are from the same kind")
+			return
+		}
+		missingsKind[missing.Kind] = true
+	}
 
 	for _, group := range inventory.Pickeds {
 		fmt.Printf("- %s\n", inventory.GroupString(group))
