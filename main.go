@@ -336,10 +336,15 @@ func (i *Inventory) GroupString(group PickedGroup) string {
 		panic("should never happen")
 	case 2:
 		// FIXME: sometimes just say "item0 is side by side with item1"
-		if items[0].Person == items[1].Person-1 {
+		directLeft := items[0].Person == items[1].Person-1
+		directRight := items[0].Person == items[1].Person+1
+		if (directLeft || directRight) && rand.Intn(2) > 0 {
+			return fmt.Sprintf("%s is on the side of %s", items[0].Name(), items[1].Name())
+		}
+		if directLeft {
 			return fmt.Sprintf("%s is direct on the left of %s", items[0].Name(), items[1].Name())
 		}
-		if items[0].Person == items[1].Person+1 {
+		if directRight {
 			return fmt.Sprintf("%s is direct on the right of %s", items[0].Name(), items[1].Name())
 		}
 		if items[0].Person < items[1].Person {
