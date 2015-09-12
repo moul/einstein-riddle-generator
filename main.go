@@ -317,6 +317,16 @@ func (i *Inventory) GroupString(group PickedGroup) string {
 	return fmt.Sprintf("%v %v %v", sameKind, samePerson, items)
 }
 
+func (i *Inventory) Missings() []Item {
+	missings := []Item{}
+	for idx := 0; idx < i.Length(); idx++ {
+		if i.Vector[idx] == 0 {
+			missings = append(missings, i.At(idx))
+		}
+	}
+	return missings
+}
+
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	inventory := NewInventory(5, 5, 2)
@@ -336,5 +346,11 @@ func main() {
 
 	for _, group := range inventory.Pickeds {
 		fmt.Printf("- %s\n", inventory.GroupString(group))
+	}
+
+	fmt.Println("")
+
+	for _, item := range inventory.Missings() {
+		fmt.Printf("- where is %s ?\n", item.Name())
 	}
 }
