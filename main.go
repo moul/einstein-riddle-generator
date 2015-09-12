@@ -353,7 +353,7 @@ func (i *Inventory) GroupString(group PickedGroup) string {
 			return fmt.Sprintf("%s is on the left of %s", items[0].Name(), items[1].Name())
 		}
 		if items[0].Person > items[1].Person {
-			return fmt.Sprintf("%s is on the left of %s", items[0].Name(), items[1].Name())
+			return fmt.Sprintf("%s is on the right of %s", items[0].Name(), items[1].Name())
 		}
 	default:
 		panic("not implemented")
