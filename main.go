@@ -267,6 +267,20 @@ func (i *Inventory) GroupString(group PickedGroup) string {
 		fullNames = append(fullNames, item.Name())
 	}
 
+	if len(group) == 1 {
+		currentPerson := items[0].Person
+		if currentPerson == 0 {
+			return fmt.Sprintf("%s is on the far left", items[0].Name())
+		}
+		if currentPerson == i.Size-1 {
+			return fmt.Sprintf("%s is on the far right", items[0].Name())
+		}
+		if i.Size%2 == 1 && currentPerson == (i.Size-1)/2 {
+			return fmt.Sprintf("%s is in the middle", items[0].Name())
+		}
+		panic("not implemented")
+	}
+
 	sameKind := true
 	samePerson := true
 
@@ -287,16 +301,7 @@ func (i *Inventory) GroupString(group PickedGroup) string {
 
 	switch len(group) {
 	case 1:
-		if currentPerson == 0 {
-			return fmt.Sprintf("%s is on the left", items[0].Name())
-		}
-		if currentPerson == i.Size {
-			return fmt.Sprintf("%s is on the right", items[0].Name())
-		}
-		if i.Size%2 == 1 && currentPerson == (i.Size-1)/2 {
-			return fmt.Sprintf("%s is in the middle", items[0].Name())
-		}
-		panic("not implemented")
+		panic("should never happen")
 	case 2:
 		if items[0].Person == items[1].Person-1 {
 			return fmt.Sprintf("%s is direct on the left of %s", items[0].Name(), items[1].Name())
@@ -327,11 +332,47 @@ func (i *Inventory) Missings() []Item {
 	return missings
 }
 
+func (i *Inventory) PickItemAtExtremity(targetCounter int) []int {
+	picked := make([]int, 1)
+	idx := -1
+
+	// limits are arbitrary choosen to avoid infinite loop
+	// best effort for now
+	for ; targetCounter < 10; targetCounter++ {
+		for try := 0; try < 100; try++ {
+			direction := rand.Intn(3)
+			kind := rand.Intn(i.Categories)
+			switch direction {
+			case 0:
+				idx = kind * i.Size
+			case 1:
+				idx = kind*i.Size + i.Size - 1
+			case 2:
+				if i.Size%2 == 1 {
+					idx = kind*i.Size + (i.Size-1)/2
+				} else {
+					continue
+				}
+			default:
+				panic("should never happen")
+			}
+			if i.Vector[idx] == targetCounter {
+				picked[0] = idx
+				i.Vector[idx]++
+				i.Pickeds = append(i.Pickeds, picked)
+				return picked
+			}
+		}
+	}
+	panic("should never happen")
+	return picked
+}
+
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	inventory := NewInventory(5, 5, 2)
 
-	inventory.Show()
+	// inventory.Show()
 	// pick at least each item one time
 	for !inventory.EOF() {
 		inventory.PickAvailableGroup(1)
@@ -340,6 +381,11 @@ func main() {
 	// pick again some items
 	for i := 0; i < 3; i++ {
 		inventory.PickAvailableGroup(2)
+	}
+
+	// pick groups of 1 item on an extremity
+	for i := 0; i < 3; i++ {
+		inventory.PickItemAtExtremity(1)
 	}
 
 	inventory.Show()
