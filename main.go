@@ -216,9 +216,41 @@ func (i *Inventory) EOF() bool {
 	return (len(i.Pickeds)+1)*i.GroupSize >= i.Length()
 }
 
+func (i *Inventory) PickSamePersonGroup(maxLevel int) []int {
+	picked := []int{}
+
+	// arbitrary choosen value to avoid infinite loops
+	for try := 0; try < 42; try++ {
+		person := rand.Intn(i.Size)
+
+		kinds := make([]int, i.Categories)
+		for j := 0; j < i.Categories; j++ {
+			kinds[j] = j
+		}
+		for j := 0; j < i.Categories; j++ {
+			k := rand.Intn(i.Categories)
+			kinds[j], kinds[k] = kinds[k], kinds[j]
+		}
+		for _, kind := range kinds {
+			idx := kind*i.Size + person
+			if i.Vector[idx] <= maxLevel {
+				picked = append(picked, idx)
+				if len(picked) == i.GroupSize {
+					i.Pickeds = append(i.Pickeds, picked)
+					for j := 0; j < i.GroupSize; j++ {
+						i.Vector[picked[j]]++
+					}
+					return picked
+				}
+			}
+		}
+	}
+	panic("should never happen")
+	return picked
+}
+
 func (i *Inventory) PickAvailableGroup(maxLevel int) []int {
 	// FIXME: pick more groups of the same person
-	// FIXME: pick groups of one item on full left or full right
 	length := i.Length()
 	picked := make([]int, i.GroupSize)
 
@@ -303,6 +335,7 @@ func (i *Inventory) GroupString(group PickedGroup) string {
 	case 1:
 		panic("should never happen")
 	case 2:
+		// FIXME: sometimes just say "item0 is side by side with item1"
 		if items[0].Person == items[1].Person-1 {
 			return fmt.Sprintf("%s is direct on the left of %s", items[0].Name(), items[1].Name())
 		}
@@ -373,6 +406,10 @@ func main() {
 	inventory := NewInventory(5, 5, 2)
 
 	// inventory.Show()
+	for i := 0; i < inventory.Length()/3; i++ {
+		inventory.PickSamePersonGroup(0)
+	}
+
 	// pick at least each item one time
 	for !inventory.EOF() {
 		inventory.PickAvailableGroup(1)
