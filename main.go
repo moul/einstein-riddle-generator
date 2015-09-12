@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"strings"
 	"text/tabwriter"
 	"time"
 )
@@ -12,14 +13,23 @@ type Inventory struct {
 	Size       int
 	Categories int
 	Vector     []int
-	Picked     [][]int
+	Pickeds    []PickedGroup
 	GroupSize  int
 
 	Items map[int]ItemList
 	Kinds []int
 }
 
+type PickedGroup []int
+
 type ItemList []string
+
+type Item struct {
+	Kind   int
+	Value  string
+	Idx    int
+	Person int
+}
 
 var BaseInventory map[int]ItemList
 
@@ -157,7 +167,7 @@ func NewInventory(size, categories, groupSize int) *Inventory {
 	}
 
 	inventory.Vector = make([]int, inventory.Length())
-	inventory.Picked = make([][]int, 0)
+	inventory.Pickeds = make([]PickedGroup, 0)
 
 	for i := range Kinds {
 		j := rand.Intn(i + 1)
@@ -203,10 +213,12 @@ func (i *Inventory) Length() int {
 }
 
 func (i *Inventory) EOF() bool {
-	return (len(i.Picked)+1)*i.GroupSize >= i.Length()
+	return (len(i.Pickeds)+1)*i.GroupSize >= i.Length()
 }
 
 func (i *Inventory) PickAvailableGroup(maxLevel int) []int {
+	// FIXME: pick more groups of the same person
+	// FIXME: pick groups of one item on full left or full right
 	length := i.Length()
 	picked := make([]int, i.GroupSize)
 
@@ -228,8 +240,81 @@ func (i *Inventory) PickAvailableGroup(maxLevel int) []int {
 		picked[j] = idx
 		i.Vector[idx]++
 	}
-	i.Picked = append(i.Picked, picked)
+	i.Pickeds = append(i.Pickeds, picked)
 	return picked
+}
+
+func (i *Inventory) At(idx int) Item {
+	item := Item{
+		Kind:   i.Kinds[idx/i.Size],
+		Idx:    idx,
+		Person: idx % i.Size,
+	}
+	item.Value = i.Items[item.Kind][item.Person]
+	return item
+}
+func (i *Item) Name() string {
+	return fmt.Sprintf("%s:%s", KindName[i.Kind], i.Value)
+}
+
+func (i *Inventory) GroupString(group PickedGroup) string {
+	items := []Item{}
+
+	fullNames := []string{}
+	for _, idx := range group {
+		item := i.At(idx)
+		items = append(items, item)
+		fullNames = append(fullNames, item.Name())
+	}
+
+	sameKind := true
+	samePerson := true
+
+	currentKind := items[0].Kind
+	currentPerson := items[0].Person
+	for j := 1; j < i.GroupSize; j++ {
+		if currentKind != items[j].Kind {
+			sameKind = false
+		}
+		if currentPerson != items[j].Person {
+			samePerson = false
+		}
+	}
+
+	if samePerson {
+		return strings.Join(fullNames, " == ")
+	}
+
+	switch len(group) {
+	case 1:
+		if currentPerson == 0 {
+			return fmt.Sprintf("%s is on the left", items[0].Name())
+		}
+		if currentPerson == i.Size {
+			return fmt.Sprintf("%s is on the right", items[0].Name())
+		}
+		if i.Size%2 == 1 && currentPerson == (i.Size-1)/2 {
+			return fmt.Sprintf("%s is in the middle", items[0].Name())
+		}
+		panic("not implemented")
+	case 2:
+		if items[0].Person == items[1].Person-1 {
+			return fmt.Sprintf("%s is direct on the left of %s", items[0].Name(), items[1].Name())
+		}
+		if items[0].Person == items[1].Person+1 {
+			return fmt.Sprintf("%s is direct on the right of %s", items[0].Name(), items[1].Name())
+		}
+		if items[0].Person < items[1].Person {
+			return fmt.Sprintf("%s is on the left of %s", items[0].Name(), items[1].Name())
+		}
+		if items[0].Person > items[1].Person {
+			return fmt.Sprintf("%s is on the left of %s", items[0].Name(), items[1].Name())
+		}
+	default:
+		panic("not implemented")
+	}
+
+	return fmt.Sprintf("%v %v %v", sameKind, samePerson, items)
 }
 
 func main() {
@@ -248,5 +333,8 @@ func main() {
 	}
 
 	inventory.Show()
-	fmt.Println(inventory.Picked)
+
+	for _, group := range inventory.Pickeds {
+		fmt.Printf("- %s\n", inventory.GroupString(group))
+	}
 }
