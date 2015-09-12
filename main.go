@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"strings"
 	"text/tabwriter"
 	"time"
 )
@@ -12,6 +11,9 @@ import (
 type Inventory struct {
 	Size       int
 	Categories int
+	Vector     []int
+	Picked     [][]int
+	GroupSize  int
 
 	Items map[int]ItemList
 	Kinds []int
@@ -145,13 +147,17 @@ func init() {
 	}
 }
 
-func NewInventory(size, categories int) *Inventory {
+func NewInventory(size, categories, groupSize int) *Inventory {
 	inventory := Inventory{
 		Size:       size,
 		Categories: categories,
 		Items:      make(map[int]ItemList, 0),
 		Kinds:      make([]int, categories),
+		GroupSize:  groupSize,
 	}
+
+	inventory.Vector = make([]int, inventory.Length())
+	inventory.Picked = make([][]int, 0)
 
 	for i := range Kinds {
 		j := rand.Intn(i + 1)
@@ -182,13 +188,65 @@ func (i *Inventory) Show() {
 		header += fmt.Sprintf("\t%d", j+1)
 	}
 	fmt.Fprintf(w, "%s\n", header)
-	for _, kind := range i.Kinds {
-		fmt.Fprintf(w, "%s\t%s\n", KindName[kind], strings.Join(i.Items[kind], "\t"))
+	for y, kind := range i.Kinds {
+		row := ""
+		for j := 0; j < i.Size; j++ {
+			row += fmt.Sprintf("%d: %s\t", i.Vector[y*i.Size+j], i.Items[kind][j])
+		}
+		fmt.Fprintf(w, "%s\t%s\n", KindName[kind], row)
 	}
+	fmt.Fprintln(w, "\n")
+}
+
+func (i *Inventory) Length() int {
+	return i.Size * i.Categories
+}
+
+func (i *Inventory) EOF() bool {
+	return (len(i.Picked)+1)*i.GroupSize >= i.Length()
+}
+
+func (i *Inventory) PickAvailableGroup(maxLevel int) []int {
+	length := i.Length()
+	picked := make([]int, i.GroupSize)
+
+	for j := 0; j < i.GroupSize; j++ {
+		max := rand.Intn(length) + 1
+		k := 0
+		l := 0
+		idx := -1
+		for k < max {
+			for {
+				if i.Vector[(k+l)%length] == maxLevel-1 {
+					idx = (k + l) % length
+					break
+				}
+				l++
+			}
+			k++
+		}
+		picked[j] = idx
+		i.Vector[idx]++
+	}
+	i.Picked = append(i.Picked, picked)
+	return picked
 }
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
-	inventory := NewInventory(8, 8)
+	inventory := NewInventory(5, 5, 2)
+
 	inventory.Show()
+	// pick at least each item one time
+	for !inventory.EOF() {
+		inventory.PickAvailableGroup(1)
+	}
+
+	// pick again some items
+	for i := 0; i < 3; i++ {
+		inventory.PickAvailableGroup(2)
+	}
+
+	inventory.Show()
+	fmt.Println(inventory.Picked)
 }
