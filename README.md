@@ -3,6 +3,8 @@
 
 [![GoDoc](https://godoc.org/github.com/moul/einstein-riddle-generator?status.svg)](https://godoc.org/github.com/moul/einstein-riddle-generator)
 
+Check out the [demo on Appspot](http://einsteins-riddle.appspot.com) !
+
 ## Install
 
 ```console
