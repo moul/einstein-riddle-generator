@@ -13,14 +13,8 @@ $ go get github.com/moul/einstein-riddle-generator/...
 
 ```console
 $ einstein-riddle
-              1             2            3              4             5
-room          2: bathroom   1: garden    1: kitchen     1: restroom   2: bedroom
-job           2: cop        1: teacher   2: architect   1: designer   1: scientist
-pet           2: shark      1: poney     0: snake       1: bird       2: beaver
-house-color   0: magenta    1: yellow    1: blue        1: pink       1: red
-nationality   2: american   2: french    1: scottish    1: spannish   2: english
-
-
+Riddle
+------
 - job:cop == pet:shark
 - room:kitchen == nationality:scottish
 - house-color:red == pet:beaver
@@ -42,6 +36,15 @@ nationality   2: american   2: french    1: scottish    1: spannish   2: english
 
 - where is pet:snake ?
 - where is house-color:magenta ?
+
+Answer
+------
+              1             2            3              4             5
+room          2: bathroom   1: garden    1: kitchen     1: restroom   2: bedroom
+job           2: cop        1: teacher   2: architect   1: designer   1: scientist
+pet           2: shark      1: poney     0: snake       1: bird       2: beaver
+house-color   0: magenta    1: yellow    1: blue        1: pink       1: red
+nationality   2: american   2: french    1: scottish    1: spannish   2: english
 ```
 
 ## License
