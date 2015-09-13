@@ -1,0 +1,8 @@
+{
+    "project_name": "Einstein's Riddle",
+    "project_description": "Generate Einstein's Riddle, a.k.a Zebra's riddle or Einstein's puzzle",
+    "show_files": [
+        "app.go",
+        "app.yaml"
+    ]
+}

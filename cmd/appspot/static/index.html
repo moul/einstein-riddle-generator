@@ -1,0 +1,92 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Einstein Riddle</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.4.3/angular.js"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.4.3/angular-animate.js"></script>
+    <script src="//angular-ui.github.io/bootstrap/ui-bootstrap-tpls-0.13.3.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/0.13.3/ui-bootstrap.min.js"></script>
+
+    <script type="text/javascript">
+     angular.module("einsteinriddle", ['einsteinriddle.controllers','ngAnimate','ui.bootstrap']);
+     angular.module("einsteinriddle.controllers", [])
+            .controller('EinsteinRiddleCtrl', ['$scope', '$http', '$interval', function($scope, $http, $interval) {
+       $scope.requestType = 'post';
+       $scope.url = '/shazam';
+       $scope.response = null;
+       $scope.errors = null;
+
+       $scope.sendRequest = function(){
+         var data = {
+           Options: {},
+         };
+         $http.post($scope.url, data)
+              .success(function(data,status,headers,config) {
+           $scope.hasError = false;
+           $scope.errors = {};
+           $scope.response = {};
+           $scope.response.data = data;
+           $scope.response.status = status;
+           $scope.response.headers = headers;
+           $scope.response.config = config;
+           console.log($scope.response);
+         })
+              .error(function(data,status,headers,config) {
+           $scope.hasError = true;
+           $scope.errors = {};
+           $scope.response = {};
+           $scope.errors.data = data;
+           $scope.errors.status = status;
+           $scope.errors.headers = headers;
+           $scope.errors.config = config;
+         });
+       };
+
+       $scope.sendRequest();
+     }]);
+    </script>
+
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.3/styles/github.min.css">
+    <style>.ace_editor { height: 400px; }</style>
+  </head>
+  <body ng-app="einsteinriddle">
+    <div class="container" ng-controller="EinsteinRiddleCtrl">
+      <div class="row">
+        <div class="page-header">
+          <h1>Einstein Riddle <small>Generate Einstein/Zebra's Riddle/Puzzle</small></h1>
+        </div>
+      </div>
+      <div class="row">
+        <form name="form" ng-submit="sendRequest()" class="well">
+          <div class="row">
+            <div class="col-md-12">
+              <div class="btn-group">
+                <button class="btn btn-primary" type="submit">Shazam !</button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="row">
+        <div class="well">
+          <div ng-show="!hasError">
+            <label>Facts</label>
+            <ul>
+              <li ng-repeat="(key, value) in response.data.facts">{{value}}</li>
+            </ul>
+            <label>Questions</label>
+            <ul>
+              <li ng-repeat="(key, value) in response.data.questions">{{value}}</li>
+            </ul>
+          </div>
+          <code ng-show="hasError" class="danger">{{errors.data}}</code>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
