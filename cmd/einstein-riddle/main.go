@@ -2,60 +2,30 @@ package main
 
 import (
 	"fmt"
-	"math/rand"
-	"time"
 
 	"github.com/moul/einstein-riddle-generator"
 )
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
-	inventory := einsteinriddle.NewInventory(5, 5, 2)
-
-	// inventory.Show()
-	for i := 0; i < inventory.Length()/3; i++ {
-		inventory.PickSamePersonGroup(0)
+	options := einsteinriddle.Options{
+		Size:       5,
+		Categories: 5,
+		Secrets:    2,
 	}
+	generator := einsteinriddle.NewGenerator(options)
 
-	secretQuantity := 2
+	// Shazam
+	generator.Shazam()
 
-	// pick at least each item one time
-	for len(inventory.Missings()) > secretQuantity+1 {
-		inventory.PickAvailableGroup(1)
+	// Print map
+	generator.Show()
+
+	// Print riddle
+	for _, group := range generator.Pickeds {
+		fmt.Printf("- %s\n", generator.GroupString(group))
 	}
-
-	for len(inventory.Missings()) > secretQuantity {
-		inventory.PickItemAtExtremity(0)
-	}
-
-	// pick again some items
-	for i := 0; i < 3; i++ {
-		inventory.PickAvailableGroup(2)
-	}
-
-	// pick groups of 1 item on an extremity
-	for i := 0; i < 3; i++ {
-		inventory.PickItemAtExtremity(1)
-	}
-
-	inventory.Show()
-
-	missingsKind := make(map[int]bool, 0)
-	for _, missing := range inventory.Missings() {
-		if missingsKind[missing.Kind] {
-			fmt.Errorf("Invalid riddle: multiple missings item are from the same kind")
-			return
-		}
-		missingsKind[missing.Kind] = true
-	}
-
-	for _, group := range inventory.Pickeds {
-		fmt.Printf("- %s\n", inventory.GroupString(group))
-	}
-
 	fmt.Println("")
-
-	for _, item := range inventory.Missings() {
+	for _, item := range generator.Missings() {
 		fmt.Printf("- where is %s ?\n", item.Name())
 	}
 }

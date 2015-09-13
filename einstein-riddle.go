@@ -6,14 +6,14 @@ import (
 	"os"
 	"strings"
 	"text/tabwriter"
+	"time"
 )
 
-type Inventory struct {
-	Size       int
-	Categories int
-	Vector     []int
-	Pickeds    []PickedGroup
-	GroupSize  int
+type Generator struct {
+	Options Options
+
+	Vector  []int
+	Pickeds []PickedGroup
 
 	Items map[int]ItemList
 	Kinds []int
@@ -30,7 +30,7 @@ type Item struct {
 	Person int
 }
 
-var BaseInventory map[int]ItemList
+var BaseGenerator map[int]ItemList
 
 const (
 	KindNationality = iota
@@ -68,7 +68,7 @@ func init() {
 		KindTransport:   "transport",
 		KindRoom:        "room",
 	}
-	BaseInventory = map[int]ItemList{
+	BaseGenerator = map[int]ItemList{
 		KindNationality: {
 			"french",
 			"english",
@@ -156,88 +156,119 @@ func init() {
 	}
 }
 
-func NewInventory(size, categories, groupSize int) *Inventory {
-	inventory := Inventory{
-		Size:       size,
-		Categories: categories,
-		Items:      make(map[int]ItemList, 0),
-		Kinds:      make([]int, categories),
-		GroupSize:  groupSize,
-	}
+type Options struct {
+	Size             int
+	Categories       int
+	GroupSize        int
+	Secrets          int
+	Seed             int64
+	SamePersonGroups int
+}
 
-	inventory.Vector = make([]int, inventory.Length())
-	inventory.Pickeds = make([]PickedGroup, 0)
+func (o *Options) ApplyDefaults() {
+	if o.Size == 0 {
+		o.Size = 5
+	}
+	if o.Categories == 0 {
+		o.Categories = 5
+	}
+	if o.Secrets == 0 {
+		o.Secrets = 2
+	}
+	if o.GroupSize == 0 {
+		o.GroupSize = 2
+	}
+	if o.Seed == 0 {
+		o.Seed = time.Now().UnixNano()
+	}
+	if o.SamePersonGroups == 0 {
+		o.SamePersonGroups = o.Size * o.Categories / 3
+	}
+}
+
+func NewGenerator(options Options) *Generator {
+	options.ApplyDefaults()
+
+	rand.Seed(options.Seed)
+
+	generator := Generator{
+		Options: options,
+		Items:   make(map[int]ItemList, 0),
+		Kinds:   make([]int, options.Categories),
+	}
+	generator.Vector = make([]int, generator.Length())
+	generator.Pickeds = make([]PickedGroup, 0)
 
 	for i := range Kinds {
 		j := rand.Intn(i + 1)
 		Kinds[i], Kinds[j] = Kinds[j], Kinds[i]
 	}
 
-	for i := 0; i < categories; i++ {
-		inventory.Kinds[i] = Kinds[i]
+	for i := 0; i < options.Categories; i++ {
+		generator.Kinds[i] = Kinds[i]
 	}
 
-	for _, kind := range inventory.Kinds {
-		itemList := BaseInventory[kind]
+	for _, kind := range generator.Kinds {
+		itemList := BaseGenerator[kind]
 		itemList.Shuffle()
-		inventory.Items[kind] = ItemList{}
-		for i := 0; i < inventory.Size; i++ {
-			inventory.Items[kind] = append(inventory.Items[kind], itemList[i])
+		generator.Items[kind] = ItemList{}
+		for i := 0; i < options.Size; i++ {
+			generator.Items[kind] = append(generator.Items[kind], itemList[i])
 		}
 	}
 
-	return &inventory
+	return &generator
 }
 
-func (i *Inventory) Show() {
+func (g *Generator) Show() {
 	w := tabwriter.NewWriter(os.Stdout, 10, 1, 3, ' ', 0)
 	defer w.Flush()
 	header := ""
-	for j := 0; j < i.Size; j++ {
+	for j := 0; j < g.Options.Size; j++ {
 		header += fmt.Sprintf("\t%d", j+1)
 	}
 	fmt.Fprintf(w, "%s\n", header)
-	for y, kind := range i.Kinds {
+	for y, kind := range g.Kinds {
 		row := ""
-		for j := 0; j < i.Size; j++ {
-			row += fmt.Sprintf("%d: %s\t", i.Vector[y*i.Size+j], i.Items[kind][j])
+		for j := 0; j < g.Options.Size; j++ {
+			row += fmt.Sprintf("%d: %s\t", g.Vector[y*g.Options.Size+j], g.Items[kind][j])
 		}
 		fmt.Fprintf(w, "%s\t%s\n", KindName[kind], row)
 	}
 	fmt.Fprintln(w, "\n")
 }
 
-func (i *Inventory) Length() int {
-	return i.Size * i.Categories
+func (g *Generator) Length() int {
+	return g.Options.Size * g.Options.Categories
 }
 
-func (i *Inventory) EOF() bool {
-	return len(i.Missings()) <= 2
+func (g *Generator) EOF() bool {
+	return len(g.Missings()) <= 2
 }
 
-func (i *Inventory) PickSamePersonGroup(maxLevel int) []int {
+func (g *Generator) PickSamePersonGroup(maxLevel int) []int {
 	picked := []int{}
 
 	// arbitrary choosen value to avoid infinite loops
 	for try := 0; try < 42; try++ {
-		person := rand.Intn(i.Size)
+		person := rand.Intn(g.Options.Size)
 
-		kinds := make([]int, i.Categories)
-		for j := 0; j < i.Categories; j++ {
+		kinds := make([]int, g.Options.Categories)
+		for j := 0; j < g.Options.Categories; j++ {
 			kinds[j] = j
 		}
-		for j := 0; j < i.Categories; j++ {
-			k := rand.Intn(i.Categories)
+		for j := 0; j < g.Options.Categories; j++ {
+			k := rand.Intn(g.Options.Categories)
 			kinds[j], kinds[k] = kinds[k], kinds[j]
 		}
 		for _, kind := range kinds {
-			idx := kind*i.Size + person
-			if i.Vector[idx] <= maxLevel {
+			idx := kind*g.Options.Size + person
+			if g.Vector[idx] <= maxLevel {
 				picked = append(picked, idx)
-				if len(picked) == i.GroupSize {
-					i.Pickeds = append(i.Pickeds, picked)
-					for j := 0; j < i.GroupSize; j++ {
-						i.Vector[picked[j]]++
+				if len(picked) == g.Options.GroupSize {
+					g.Pickeds = append(g.Pickeds, picked)
+					for j := 0; j < g.Options.GroupSize; j++ {
+						g.Vector[picked[j]]++
 					}
 					return picked
 				}
@@ -248,19 +279,19 @@ func (i *Inventory) PickSamePersonGroup(maxLevel int) []int {
 	return picked
 }
 
-func (i *Inventory) PickAvailableGroup(maxLevel int) []int {
+func (g *Generator) PickAvailableGroup(maxLevel int) []int {
 	// FIXME: pick more groups of the same person
-	length := i.Length()
-	picked := make([]int, i.GroupSize)
+	length := g.Length()
+	picked := make([]int, g.Options.GroupSize)
 
-	for j := 0; j < i.GroupSize; j++ {
+	for j := 0; j < g.Options.GroupSize; j++ {
 		max := rand.Intn(length) + 1
 		k := 0
 		l := 0
 		idx := -1
 		for k < max {
 			for {
-				if i.Vector[(k+l)%length] == maxLevel-1 {
+				if g.Vector[(k+l)%length] == maxLevel-1 {
 					idx = (k + l) % length
 					break
 				}
@@ -269,31 +300,31 @@ func (i *Inventory) PickAvailableGroup(maxLevel int) []int {
 			k++
 		}
 		picked[j] = idx
-		i.Vector[idx]++
+		g.Vector[idx]++
 	}
-	i.Pickeds = append(i.Pickeds, picked)
+	g.Pickeds = append(g.Pickeds, picked)
 	return picked
 }
 
-func (i *Inventory) At(idx int) Item {
+func (g *Generator) At(idx int) Item {
 	item := Item{
-		Kind:   i.Kinds[idx/i.Size],
+		Kind:   g.Kinds[idx/g.Options.Size],
 		Idx:    idx,
-		Person: idx % i.Size,
+		Person: idx % g.Options.Size,
 	}
-	item.Value = i.Items[item.Kind][item.Person]
+	item.Value = g.Items[item.Kind][item.Person]
 	return item
 }
 func (i *Item) Name() string {
 	return fmt.Sprintf("%s:%s", KindName[i.Kind], i.Value)
 }
 
-func (i *Inventory) GroupString(group PickedGroup) string {
+func (g *Generator) GroupString(group PickedGroup) string {
 	items := []Item{}
 
 	fullNames := []string{}
 	for _, idx := range group {
-		item := i.At(idx)
+		item := g.At(idx)
 		items = append(items, item)
 		fullNames = append(fullNames, item.Name())
 	}
@@ -303,10 +334,10 @@ func (i *Inventory) GroupString(group PickedGroup) string {
 		if currentPerson == 0 {
 			return fmt.Sprintf("%s is on the far left", items[0].Name())
 		}
-		if currentPerson == i.Size-1 {
+		if currentPerson == g.Options.Size-1 {
 			return fmt.Sprintf("%s is on the far right", items[0].Name())
 		}
-		if i.Size%2 == 1 && currentPerson == (i.Size-1)/2 {
+		if g.Options.Size%2 == 1 && currentPerson == (g.Options.Size-1)/2 {
 			return fmt.Sprintf("%s is in the middle", items[0].Name())
 		}
 		panic("not implemented")
@@ -317,7 +348,7 @@ func (i *Inventory) GroupString(group PickedGroup) string {
 
 	currentKind := items[0].Kind
 	currentPerson := items[0].Person
-	for j := 1; j < i.GroupSize; j++ {
+	for j := 1; j < g.Options.GroupSize; j++ {
 		if currentKind != items[j].Kind {
 			sameKind = false
 		}
@@ -359,17 +390,17 @@ func (i *Inventory) GroupString(group PickedGroup) string {
 	return fmt.Sprintf("%v %v %v", sameKind, samePerson, items)
 }
 
-func (i *Inventory) Missings() []Item {
+func (g *Generator) Missings() []Item {
 	missings := []Item{}
-	for idx := 0; idx < i.Length(); idx++ {
-		if i.Vector[idx] == 0 {
-			missings = append(missings, i.At(idx))
+	for idx := 0; idx < g.Length(); idx++ {
+		if g.Vector[idx] == 0 {
+			missings = append(missings, g.At(idx))
 		}
 	}
 	return missings
 }
 
-func (i *Inventory) PickItemAtExtremity(targetCounter int) []int {
+func (g *Generator) PickItemAtExtremity(targetCounter int) []int {
 	picked := make([]int, 1)
 	idx := -1
 
@@ -378,29 +409,64 @@ func (i *Inventory) PickItemAtExtremity(targetCounter int) []int {
 	for ; targetCounter < 10; targetCounter++ {
 		for try := 0; try < 100; try++ {
 			direction := rand.Intn(3)
-			kind := rand.Intn(i.Categories)
+			kind := rand.Intn(g.Options.Categories)
 			switch direction {
 			case 0:
-				idx = kind * i.Size
+				idx = kind * g.Options.Size
 			case 1:
-				idx = kind*i.Size + i.Size - 1
+				idx = kind*g.Options.Size + g.Options.Size - 1
 			case 2:
-				if i.Size%2 == 1 {
-					idx = kind*i.Size + (i.Size-1)/2
+				if g.Options.Size%2 == 1 {
+					idx = kind*g.Options.Size + (g.Options.Size-1)/2
 				} else {
 					continue
 				}
 			default:
 				panic("should never happen")
 			}
-			if i.Vector[idx] == targetCounter {
+			if g.Vector[idx] == targetCounter {
 				picked[0] = idx
-				i.Vector[idx]++
-				i.Pickeds = append(i.Pickeds, picked)
+				g.Vector[idx]++
+				g.Pickeds = append(g.Pickeds, picked)
 				return picked
 			}
 		}
 	}
 	panic("should never happen")
 	return picked
+}
+
+func (g *Generator) Shazam() error {
+	for i := 0; i < g.Options.SamePersonGroups; i++ {
+		g.PickSamePersonGroup(0)
+	}
+
+	// pick at least each item one time
+	for len(g.Missings()) > g.Options.Secrets+1 {
+		g.PickAvailableGroup(1)
+	}
+
+	for len(g.Missings()) > g.Options.Secrets {
+		g.PickItemAtExtremity(0)
+	}
+
+	// pick again some items
+	for i := 0; i < 3; i++ {
+		g.PickAvailableGroup(2)
+	}
+
+	// pick groups of 1 item on an extremity
+	for i := 0; i < 3; i++ {
+		g.PickItemAtExtremity(1)
+	}
+
+	missingsKind := make(map[int]bool, 0)
+	for _, missing := range g.Missings() {
+		if missingsKind[missing.Kind] {
+			return fmt.Errorf("Invalid riddle: multiple missings item are from the same kind")
+		}
+		missingsKind[missing.Kind] = true
+	}
+
+	return nil
 }
