@@ -1,7 +1,7 @@
 # einstein-riddle-generator
 :game_die: Einstein Riddle Generator
 
-[![GoDoc](https://godoc.org/github.com/moul/einstein-riddle-generator?status.svg)](https://godoc.org/github.com/moul/einstein-riddle-generator)
+[![GoDoc](https://godoc.org/github.com/moul/einstein-riddle-generator?status.svg)](https://godoc.org/github.com/moul/einstein-riddle-generator) [![GuardRails badge](https://badges.production.guardrails.io/moul/einstein-riddle-generator.svg)](https://www.guardrails.io)
 
 Check out the [demo on Appspot](http://einsteins-riddle.appspot.com) !
 
