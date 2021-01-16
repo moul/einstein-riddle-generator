@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/moul/einstein-riddle-generator"
+	"moul.io/einstein-riddle-generator"
 )
 
 func main() {
